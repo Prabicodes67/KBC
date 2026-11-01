@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Crorepati Quiz Night</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <style>
   :root{
     --gold1:#f7d774; --gold2:#c8962c; --gold3:#8a5f12;
@@ -105,13 +107,6 @@
   .player b{color:var(--gold1)}
 
   .center-area{display:flex;flex-direction:column;align-items:center;gap:12px;margin:14px 0}
-  .timer{position:relative;width:110px;height:110px}
-  .timer svg{transform:rotate(-90deg)}
-  .timer .bg{stroke:#1d1560;stroke-width:9;fill:url(#timerFill)}
-  .timer .fg{stroke:var(--gold1);stroke-width:9;fill:none;stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke .3s}
-  .timer .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:800}
-  .timer.hidden{visibility:hidden}
-  .timer.warn .fg{stroke:var(--red)}
   .qnum{color:var(--gold1);font-weight:700;letter-spacing:2px;font-size:15px;text-transform:uppercase}
 
   .board{width:100%;max-width:1000px;display:flex;flex-direction:column;gap:16px;padding-bottom:6px}
@@ -131,6 +126,13 @@
     background:linear-gradient(180deg,var(--box2) 0%,var(--box) 50%,#06042a 100%);
   }
   .question .hex{padding:26px 8%;min-height:110px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:clamp(17px,2.2vw,24px);font-weight:600;line-height:1.4}
+  .question .hex{flex-direction:column;gap:6px;padding:22px 7%;min-height:150px}
+  .qlead{font-size:clamp(15px,1.6vw,19px);color:var(--muted);font-weight:500;letter-spacing:.5px}
+  .qmath{font-size:clamp(15px,2vw,24px);max-width:100%;overflow-x:auto;overflow-y:hidden}
+  .qmath .katex-display{margin:4px 0}
+  .option .hex{min-height:70px}
+  .option .opt{font-size:clamp(14px,1.7vw,19px)}
+  .friend-text .katex{font-size:1.05em}
   .options{display:grid;grid-template-columns:1fr 1fr;gap:16px 26px}
   .option{cursor:pointer;transition:transform .12s}
   .option:hover:not(.disabled) .hex{background:linear-gradient(180deg,#2b22a0,#17107a 50%,#0b0750)}
@@ -203,9 +205,6 @@
     .options{grid-template-columns:1fr;gap:10px}
     .lifeline{width:54px;height:38px;font-size:12px}
     .lifelines{gap:8px}
-    .timer{width:84px;height:84px}
-    .timer svg{width:84px;height:84px}
-    .timer .num{font-size:28px}
   }
 </style>
 </head>
@@ -218,13 +217,13 @@
   <div class="emblem"><span>₹</span></div>
   <div>
     <div class="title">CROREPATI<br>QUIZ NIGHT</div>
-    <div class="subtitle">16 questions · 7 crore rupees</div>
+    <div class="subtitle">16 integrals · 7 crore rupees</div>
   </div>
   <input id="playerName" class="name-input" placeholder="Enter your name" maxlength="20">
   <button class="btn" id="startBtn">Let's Play</button>
   <div class="rules">
-    Answer 16 questions to win ₹7,00,00,000. Questions 5 and 10 are safe levels.
-    Questions 1–5 have 30 seconds, 6–10 have 45 seconds, and after that there is no timer.
+    Solve 16 integrals to win ₹7,00,00,000. Questions 5 and 10 are safe levels.
+    Take as long as you like on each question.
     You get four lifelines: 50:50, Audience Poll, Phone a Friend and Flip the Question.
     Keyboard: A/B/C/D to pick, Enter to lock.
   </div>
@@ -254,14 +253,6 @@
     </div>
 
     <div class="center-area">
-      <div class="timer" id="timer">
-        <svg width="110" height="110" viewBox="0 0 110 110">
-          <defs><radialGradient id="timerFill"><stop offset="0" stop-color="#3a2cc0"/><stop offset="1" stop-color="#0d0848"/></radialGradient></defs>
-          <circle class="bg" cx="55" cy="55" r="48"/>
-          <circle class="fg" id="timerArc" cx="55" cy="55" r="48" stroke-dasharray="301.6" stroke-dashoffset="0"/>
-        </svg>
-        <div class="num" id="timerNum">30</div>
-      </div>
       <div class="qnum" id="qLabel">Question 1 · for ₹1,000</div>
     </div>
 
@@ -287,72 +278,71 @@ const LADDER = [1000,2000,3000,5000,10000,20000,40000,80000,160000,320000,640000
 const SAFE = [4, 9]; // indexes of Q5 and Q10
 const LETTERS = ["A","B","C","D"];
 
-// each: [question, [options], correctIndex]
-const BANK = {
-  easy: [
-    ["Which planet is known as the Red Planet?", ["Venus","Mars","Jupiter","Saturn"], 1],
-    ["How many days are there in a leap year?", ["364","365","366","367"], 2],
-    ["Which is the largest ocean on Earth?", ["Atlantic Ocean","Indian Ocean","Arctic Ocean","Pacific Ocean"], 3],
-    ["What is the chemical formula of water?", ["H₂O","CO₂","O₂","NaCl"], 0],
-    ["Which animal is called the 'Ship of the Desert'?", ["Horse","Camel","Elephant","Donkey"], 1],
-    ["What colour do you get by mixing blue and yellow?", ["Green","Purple","Orange","Brown"], 0],
-    ["How many sides does a hexagon have?", ["5","6","7","8"], 1],
-    ["Which festival is known as the festival of lights?", ["Holi","Diwali","Navratri","Onam"], 1],
-    ["What is the capital city of Nepal?", ["Pokhara","Kathmandu","Lalitpur","Biratnagar"], 1],
-    ["Which gas do plants absorb from the air to make food?", ["Oxygen","Nitrogen","Carbon dioxide","Hydrogen"], 2],
-    ["How many players are there in a cricket team on the field?", ["9","10","11","12"], 2],
-    ["Which is the fastest land animal?", ["Lion","Cheetah","Horse","Tiger"], 1]
-  ],
-  medium: [
-    ["Who wrote 'Jana Gana Mana', the national anthem of India?", ["Rabindranath Tagore","Bankim Chandra Chatterjee","Sarojini Naidu","Subramania Bharati"], 0],
-    ["Which is the tallest mountain in the world above sea level?", ["K2","Kangchenjunga","Mount Everest","Lhotse"], 2],
-    ["Which is the longest river in India?", ["Yamuna","Godavari","Ganga","Brahmaputra"], 2],
-    ["Which is the smallest prime number?", ["0","1","2","3"], 2],
-    ["In which year did India gain independence?", ["1945","1947","1950","1942"], 1],
-    ["Which organ of the human body produces insulin?", ["Liver","Pancreas","Kidney","Spleen"], 1],
-    ["Who was the first person to walk on the Moon?", ["Buzz Aldrin","Yuri Gagarin","Neil Armstrong","Michael Collins"], 2],
-    ["What is the SI unit of force?", ["Joule","Pascal","Newton","Watt"], 2],
-    ["Lumbini, the birthplace of Gautama Buddha, is in which country?", ["India","Nepal","Sri Lanka","Bhutan"], 1],
-    ["Which Indian city is known as the 'Pink City'?", ["Jodhpur","Udaipur","Jaipur","Bikaner"], 2],
-    ["Which country gifted the Statue of Liberty to the USA?", ["United Kingdom","France","Spain","Italy"], 1],
-    ["How many bones are there in an adult human body?", ["196","206","216","226"], 1]
-  ],
-  hard: [
-    ["Which element has the atomic number 26?", ["Copper","Iron","Zinc","Nickel"], 1],
-    ["The Tarbela Dam is built on which river?", ["Indus","Jhelum","Chenab","Sutlej"], 0],
-    ["The number 1729 is famously associated with which mathematician?", ["Srinivasa Ramanujan","Aryabhata","Bhaskara II","C. R. Rao"], 0],
-    ["Which is the largest desert in the world, including polar deserts?", ["Sahara","Arabian","Antarctic","Gobi"], 2],
-    ["Who was the first Indian to win a Nobel Prize?", ["C. V. Raman","Rabindranath Tagore","Mother Teresa","Amartya Sen"], 1],
-    ["Which blood group is known as the universal donor?", ["A positive","AB positive","O negative","B negative"], 2],
-    ["The Hoover Dam is located on which river?", ["Colorado","Mississippi","Columbia","Missouri"], 0],
-    ["What is the national flower of Nepal?", ["Lotus","Rhododendron","Marigold","Jasmine"], 1],
-    ["Which Mughal emperor built the Red Fort in Delhi?", ["Akbar","Shah Jahan","Humayun","Aurangzeb"], 1],
-    ["What does 'HTTP' stand for?", ["HyperText Transfer Protocol","High Transfer Text Program","HyperText Transmission Process","Host Transfer Text Protocol"], 0],
-    ["Approximately what is the speed of light in vacuum?", ["3 × 10⁶ m/s","3 × 10⁸ m/s","3 × 10¹⁰ m/s","3 × 10⁵ m/s"], 1],
-    ["Bernoulli's principle relates the pressure of a fluid to its…", ["Temperature","Velocity","Viscosity","Density only"], 1],
-    ["Which Indian state has the longest coastline?", ["Tamil Nadu","Andhra Pradesh","Gujarat","Maharashtra"], 2],
-    ["Which scientist proposed the three laws of planetary motion?", ["Galileo Galilei","Isaac Newton","Johannes Kepler","Nicolaus Copernicus"], 2]
-  ]
-};
+// Scripted order: questions always appear in this order with fixed answer positions.
+// ans = index of the correct option (0 = A, 1 = B, 2 = C, 3 = D). Every answer has been checked numerically.
+const SCRIPT = [
+  { q:"Evaluate the integral", tex:String.raw`\int_{0}^{\pi/2} \frac{\sin^{2026}x}{\sin^{2026}x+\cos^{2026}x}\,dx`,
+    opts:[String.raw`\frac{\pi}{2}`, String.raw`\frac{\pi}{4}`, String.raw`\frac{2026\,\pi}{4}`, String.raw`1`], ans:1 },
+  { q:"Find the exact value of", tex:String.raw`\int_{0}^{1} \frac{\ln(1+x)}{1+x^{2}}\,dx`,
+    opts:[String.raw`\frac{\pi}{4}\ln 2`, String.raw`\frac{\pi^{2}}{8}`, String.raw`\ln 2`, String.raw`\frac{\pi}{8}\ln 2`], ans:3 },
+  { q:"Evaluate the improper integral", tex:String.raw`\int_{0}^{\infty} \frac{x^{3}}{e^{x}-1}\,dx`,
+    opts:[String.raw`\frac{\pi^{4}}{15}`, String.raw`\frac{\pi^{4}}{90}`, String.raw`6\,\zeta(3)`, String.raw`\frac{\pi^{2}}{6}`], ans:0 },
+  { q:"Compute", tex:String.raw`\int_{0}^{\pi} \frac{x\,\sin x}{1+\cos^{2}x}\,dx`,
+    opts:[String.raw`\frac{\pi}{2}`, String.raw`\pi^{2}`, String.raw`\frac{\pi^{2}}{4}`, String.raw`\frac{\pi^{2}}{2}`], ans:2 },
+  { q:"Evaluate the integral", tex:String.raw`\int_{0}^{\pi/2} \ln\!\left(\tan x+\cot x\right)\,dx`,
+    opts:[String.raw`\frac{\pi}{2}\ln 2`, String.raw`\pi\ln 2`, String.raw`-\pi\ln 2`, String.raw`0`], ans:1 },
+  { q:"Evaluate the Gaussian-type integral", tex:String.raw`\int_{-\infty}^{\infty} e^{-x^{2}}\cos(2x)\,dx`,
+    opts:[String.raw`\sqrt{\pi}`, String.raw`\frac{\sqrt{\pi}}{2e}`, String.raw`\sqrt{\pi}\,e`, String.raw`\frac{\sqrt{\pi}}{e}`], ans:3 },
+  { q:"Find the exact value of", tex:String.raw`\int_{0}^{1} \frac{x^{4}\,(1-x)^{4}}{1+x^{2}}\,dx`,
+    opts:[String.raw`\frac{22}{7}-\pi`, String.raw`\pi-\frac{333}{106}`, String.raw`\frac{1}{630}`, String.raw`\frac{355}{113}-\pi`], ans:0 },
+  { q:"Evaluate the integral", tex:String.raw`\int_{0}^{\pi/2} \left(\sqrt{\tan x}+\sqrt{\cot x}\right)dx`,
+    opts:[String.raw`\frac{\pi}{\sqrt{2}}`, String.raw`2\pi`, String.raw`\pi\sqrt{2}`, String.raw`\frac{\pi^{2}}{2}`], ans:2 },
+  { q:"Evaluate", tex:String.raw`\int_{0}^{1} \ln(x)\,\ln(1-x)\,dx`,
+    opts:[String.raw`2-\frac{\pi^{2}}{6}`, String.raw`\frac{\pi^{2}}{6}-1`, String.raw`1-\frac{\pi^{2}}{12}`, String.raw`\zeta(3)`], ans:0 },
+  { q:"Compute the hyperbolic integral", tex:String.raw`\int_{0}^{\infty} \frac{x}{\sinh x}\,dx`,
+    opts:[String.raw`\frac{\pi^{2}}{8}`, String.raw`\frac{\pi^{2}}{4}`, String.raw`2\ln 2`, String.raw`\frac{\pi}{2}`], ans:1 },
+  { q:"Evaluate the improper integral", tex:String.raw`\int_{0}^{\infty} \frac{\ln^{2}x}{1+x^{2}}\,dx`,
+    opts:[String.raw`\frac{\pi^{3}}{16}`, String.raw`0`, String.raw`\frac{\pi^{3}}{8}`, String.raw`\frac{\pi^{2}}{4}`], ans:2 },
+  { q:"Which constant equals", tex:String.raw`\int_{0}^{1} \frac{\arctan x}{x}\,dx\;?`,
+    opts:[String.raw`\frac{\pi}{4}\ln 2`, String.raw`\frac{\pi^{2}}{12}`, String.raw`\ln 2`, String.raw`G\ \text{(Catalan's constant)}`], ans:3 },
+  { q:"Evaluate the double integral", tex:String.raw`\int_{0}^{1}\!\!\int_{0}^{1} \frac{1}{1-xy}\,dx\,dy`,
+    opts:[String.raw`\zeta(3)`, String.raw`\ln 2`, String.raw`\frac{\pi^{2}}{6}`, String.raw`\infty`], ans:2 },
+  { q:"Find the exact value of", tex:String.raw`\int_{0}^{1} \frac{\ln\!\left(1+x^{\,2+\sqrt{3}}\right)}{1+x}\,dx`,
+    opts:[String.raw`\frac{\pi^{2}}{12}\left(1-\sqrt{3}\right)+\ln 2\,\ln\!\left(1+\sqrt{3}\right)`,
+          String.raw`\frac{\pi^{2}}{12}\left(1+\sqrt{3}\right)-\ln 2\,\ln\!\left(1+\sqrt{3}\right)`,
+          String.raw`\frac{\pi^{2}}{6}\left(\sqrt{3}-1\right)+\ln^{2} 2`,
+          String.raw`\ln 2\,\ln\!\left(2+\sqrt{3}\right)-\frac{\pi^{2}}{12}`], ans:0 },
+  { q:"Evaluate", tex:String.raw`\int_{0}^{1} \frac{\ln(x)\,\ln(1+x)}{x}\,dx`,
+    opts:[String.raw`-\frac{\pi^{2}}{12}`, String.raw`\frac{3}{4}\,\zeta(3)`, String.raw`-\zeta(3)`, String.raw`-\frac{3}{4}\,\zeta(3)`], ans:3 },
+  { q:"For ₹7 crore, evaluate", tex:String.raw`\int_{0}^{\pi/2} \ln\!\left(x^{2}+\ln^{2}\!\left(\cos x\right)\right)dx`,
+    opts:[String.raw`\frac{\pi}{2}\ln 2`, String.raw`\pi\,\ln\!\left(\ln 2\right)`, String.raw`-\pi\ln 2`, String.raw`\frac{\pi^{2}}{4}\,\ln\!\left(\ln 2\right)`], ans:1 }
+];
+
+// Used by "Flip the Question", in this order
+const SPARES = [
+  { q:"Evaluate", tex:String.raw`\int_{0}^{\infty} \frac{\sin^{3}x}{x}\,dx`,
+    opts:[String.raw`\frac{\pi}{2}`, String.raw`\frac{3\pi}{8}`, String.raw`\frac{\pi}{4}`, String.raw`\frac{\pi}{3}`], ans:2 },
+  { q:"Find the exact value of", tex:String.raw`\int_{0}^{1} \frac{\ln x}{1-x}\,dx`,
+    opts:[String.raw`-\frac{\pi^{2}}{6}`, String.raw`-\frac{\pi^{2}}{12}`, String.raw`-1`, String.raw`-\ln 2`], ans:0 },
+  { q:"Evaluate", tex:String.raw`\int_{0}^{\infty} \frac{e^{-x}\sin x}{x}\,dx`,
+    opts:[String.raw`\frac{\pi}{2}`, String.raw`1`, String.raw`\frac{1}{2}`, String.raw`\frac{\pi}{4}`], ans:3 }
+];
 
 /* ================= STATE ================= */
 let S = {};
 const $ = id => document.getElementById(id);
 const fmt = n => "₹" + n.toLocaleString("en-IN");
 const shuffle = a => { a = a.slice(); for (let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const esc = t => t.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const math = (tex, display=false) => window.katex ? katex.renderToString(tex, {displayMode:display, throwOnError:false}) : esc(tex);
 const tierOf = lvl => lvl < 5 ? "easy" : lvl < 10 ? "medium" : "hard";
 
-function prepQuestion(raw){
-  const order = shuffle([0,1,2,3]);
-  return { q: raw[0], opts: order.map(i => raw[1][i]), ans: order.indexOf(raw[2]) };
-}
+function prepQuestion(item){ return { q:item.q, tex:item.tex, opts:item.opts.slice(), ans:item.ans }; }
 
 function newGame(){
-  const pools = { easy: shuffle(BANK.easy), medium: shuffle(BANK.medium), hard: shuffle(BANK.hard) };
-  const qs = [];
-  for (let l=0;l<16;l++) qs.push(prepQuestion(pools[tierOf(l)].shift()));
+  const qs = SCRIPT.map(prepQuestion);
   S = {
-    level:0, qs, spares: pools, selected:null, locked:false, busy:false,
+    level:0, qs, spares: SPARES.slice(), selected:null, locked:false, busy:false,
     used:{ fifty:false, poll:false, phone:false, flip:false },
     hidden:[], timer:null, timeLeft:0
   };
@@ -383,13 +373,13 @@ function updateLadder(){
 function loadQuestion(){
   const Q = S.qs[S.level];
   S.selected = null; S.locked = false; S.busy = false; S.hidden = [];
-  $("qText").textContent = Q.q;
+  $("qText").innerHTML = `<div class="qlead">${Q.q}</div><div class="qmath">${math(Q.tex,true)}</div>`;
   $("qLabel").textContent = `Question ${S.level+1} · for ${fmt(LADDER[S.level])}`;
   const box = $("options"); box.innerHTML = "";
   Q.opts.forEach((o,i) => {
     const d = document.createElement("div");
     d.className = "row option"; d.dataset.i = i;
-    d.innerHTML = `<div class="hex-wrap"><div class="hex"><span class="letter">${LETTERS[i]}:</span><span>${o}</span></div></div>`;
+    d.innerHTML = `<div class="hex-wrap"><div class="hex"><span class="letter">${LETTERS[i]}:</span><span class="opt">${math("\\displaystyle " + o)}</span></div></div>`;
     d.onclick = () => selectOption(i);
     box.appendChild(d);
   });
@@ -409,29 +399,8 @@ function selectOption(i){
   sfx.click();
 }
 
-/* ================= TIMER ================= */
-function startTimer(){
-  clearInterval(S.timer);
-  const t = S.level < 5 ? 30 : S.level < 10 ? 45 : 0;
-  const tEl = $("timer");
-  if (!t){ tEl.classList.add("hidden"); return; }
-  tEl.classList.remove("hidden","warn");
-  S.timeLeft = t; S.timeMax = t;
-  drawTimer();
-  S.timer = setInterval(() => {
-    if (S.busy) return; // paused during lifelines
-    S.timeLeft--;
-    drawTimer();
-    if (S.timeLeft <= 5 && S.timeLeft > 0) sfx.tick();
-    if (S.timeLeft <= 0){ clearInterval(S.timer); timeUp(); }
-  }, 1000);
-}
-function drawTimer(){
-  $("timerNum").textContent = S.timeLeft;
-  $("timerArc").style.strokeDashoffset = 301.6 * (1 - S.timeLeft / S.timeMax);
-  $("timer").classList.toggle("warn", S.timeLeft <= 10);
-}
-function stopTimer(){ clearInterval(S.timer); }
+function startTimer(){}
+function stopTimer(){}
 
 /* ================= LOCK & REVEAL ================= */
 function lockAnswer(){
@@ -471,14 +440,6 @@ function nextOrWin(){
   } else loadQuestion();
 }
 
-function timeUp(){
-  S.locked = true;
-  [...$("options").children].forEach(c => c.classList.add("disabled"));
-  optEl(S.qs[S.level].ans).classList.add("correct","flash");
-  sfx.wrong();
-  setTimeout(() => gameOver("time"), 2200);
-}
-
 function gameOver(reason){ showEnd(reason, safeWinnings()); }
 
 function quit(){
@@ -501,13 +462,11 @@ function showEnd(type, amt){
   const titles = {
     win: "Congratulations, crorepati!",
     wrong: "Oh no, that's the wrong answer",
-    time: "Time's up!",
     quit: "Well played!"
   };
   const msgs = {
     win: `${name}, you answered all 16 questions correctly. Incredible!`,
     wrong: `Good effort, ${name}. You take home your safe amount.`,
-    time: `The clock ran out, ${name}. You take home your safe amount.`,
     quit: `Smart decision, ${name}. You walk away with your winnings.`
   };
   modal(`<h2>${titles[type]}</h2><p>${msgs[type]}</p><div class="big-amount">${fmt(amt)}</div>
@@ -526,30 +485,21 @@ function visibleWrong(){
 function fifty(){
   if (S.used.fifty || S.locked) return;
   S.used.fifty = true; $("ll5050").classList.add("used"); sfx.life();
-  const remove = shuffle(visibleWrong()).slice(0,2);
+  const remove = visibleWrong().slice(0,2);
   remove.forEach(i => { S.hidden.push(i); optEl(i).classList.add("hidden"); if (S.selected===i){S.selected=null;$("lockBtn").disabled=true;} });
 }
 
 function poll(){
   if (S.used.poll || S.locked) return;
   S.used.poll = true; $("llPoll").classList.add("used"); S.busy = true; sfx.life();
-  const Q = S.qs[S.level], tier = tierOf(S.level);
-  const base = { easy:[60,82], medium:[42,65], hard:[28,50] }[tier];
+  const Q = S.qs[S.level];
   const avail = [0,1,2,3].filter(i => !S.hidden.includes(i));
+  const others = avail.filter(i => i!==Q.ans);
   let pct = [0,0,0,0];
-  let corr = base[0] + Math.random()*(base[1]-base[0]);
-  // small chance the audience gets a hard one wrong
-  let favored = Q.ans;
-  if (tier==="hard" && Math.random() < .2){ favored = shuffle(visibleWrong())[0]; }
-  if (avail.length === 2) corr = Math.min(95, corr + 15);
-  pct[favored] = corr;
-  let rest = 100 - corr;
-  const others = avail.filter(i => i!==favored);
-  const w = others.map(() => Math.random()+.2), ws = w.reduce((a,b)=>a+b,0);
-  others.forEach((i,k) => pct[i] = rest * w[k]/ws);
-  pct = pct.map(Math.round);
-  const diff = 100 - pct.reduce((a,b)=>a+b,0); pct[favored] += diff;
-
+  // scripted: audience leans to the right answer, but not unanimously
+  const split = avail.length===2 ? [74,26] : [47,24,18,11];
+  pct[Q.ans] = split[0];
+  others.forEach((i,k) => pct[i] = split[k+1]);
   modal(`<h2>Audience Poll</h2><div class="poll">${LETTERS.map((l,i)=>`
     <div class="bar-col"><span class="pct">${pct[i]}%</span><div class="bar" data-h="${pct[i]}"></div><span class="lbl">${l}</span></div>`).join("")}</div>
     <br><button class="btn" id="pollOk">Thank you, audience</button>`);
@@ -560,16 +510,13 @@ function poll(){
 function phone(){
   if (S.used.phone || S.locked) return;
   S.used.phone = true; $("llPhone").classList.add("used"); S.busy = true; sfx.life();
-  const Q = S.qs[S.level], tier = tierOf(S.level);
-  const friends = ["Rohan","Priya","Aarav","Sita","Kabir","Ananya"];
-  const f = friends[Math.floor(Math.random()*friends.length)];
-  const p = { easy:.92, medium:.75, hard:.55 }[tier];
-  const correct = Math.random() < p;
-  const pick = correct ? Q.ans : shuffle(visibleWrong())[0];
-  const sure = correct ? (Math.random()<.6 ? "I'm pretty sure" : "I think") : (Math.random()<.5 ? "I'm not fully sure, but I think" : "Hmm… my guess is");
-  const conf = correct ? Math.floor(70+Math.random()*28) : Math.floor(35+Math.random()*30);
+  const Q = S.qs[S.level];
+  const f = "Rohan";
+  const pick = Q.ans;  // scripted: the friend always gets it right
+  const sure = "Give me a second… substitute, flip the limits… okay, I'm pretty sure";
+  const conf = 90;
   modal(`<h2>📞 Calling ${f}…</h2><p id="ringing">Ring… ring…</p>
-    <div class="friend-text" id="fText" style="display:none">"${sure} the answer is <b>${LETTERS[pick]}: ${Q.opts[pick]}</b>. I'd say I'm about ${conf}% confident."</div><br>
+    <div class="friend-text" id="fText" style="display:none">"${sure} the answer is <b>${LETTERS[pick]}: ${math(Q.opts[pick])}</b>. I'd say I'm about ${conf}% confident."</div><br>
     <button class="btn" id="phoneOk" style="display:none">Thanks, ${f}!</button>`);
   setTimeout(()=>{ $("ringing").textContent = `${f} picked up!`; $("fText").style.display="block"; $("phoneOk").style.display="inline-block"; }, 1800);
   $("phoneOk").onclick = () => { S.busy=false; closeModal(); };
@@ -577,7 +524,7 @@ function phone(){
 
 function flip(){
   if (S.used.flip || S.locked) return;
-  const pool = S.spares[tierOf(S.level)];
+  const pool = S.spares;
   if (!pool.length) return;
   S.used.flip = true; $("llFlip").classList.add("used"); sfx.life();
   S.qs[S.level] = prepQuestion(pool.shift());
